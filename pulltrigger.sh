@@ -2,14 +2,24 @@
 set -eux
 
 function trigger_on_update {
+    sep="(\ {2,}|\ *->\ *)"
     cmd=$*
-    gitupdatemsg=$(git remote update 2>&1)
-    # gitupdatemsg=$(cat msg.txt)
-    branchlist=$(echo "$gitupdatemsg" | grep "\->" | awk '{print $2}')
-    for branch in $branchlist; do
-        commitrange=$(echo "$gitupdatemsg" | grep "\->" | grep $branch | awk '{print $1}')
-        commitlist=$(git rev-list --ancestry-path $commitrange)
+    gitupdatemsg=$(git remote -v update 2>&1 | grep "\->")
 
+    # gitupdatemsg=$(cat msg.txt | grep "\->")
+    branchlist=$(echo "$gitupdatemsg" | awk -F "$sep" '{print $2}')
+
+    for branch in $branchlist; do
+        commitrange=$(echo "$gitupdatemsg" | grep $branch | awk -F "$sep" '{print $1}')
+        
+        if [[ $commitrange == ' = [up to date]' ]]; then
+            continue
+        fi
+        if [[ $commitrange == ' * [new branch]' ]]; then
+            continue
+        fi
+    
+        commitlist=$(git rev-list --ancestry-path $commitrange)
         for commithash in $commitlist; do
             commitmsg=$(git log --format=%B -n 1 $commithash)
             commitmsg64=$(echo "$commitmsg" | base64)
