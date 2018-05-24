@@ -26,9 +26,11 @@ function filter_commits {
 
     if [[ $branch == master ]]; then
         $*
+        return $?
     fi  
     if [[ $commitmsg =~ ".*RUN BENCHMARKS\Z" ]]; then
         $*
+        return $?
     fi 
 }
 
