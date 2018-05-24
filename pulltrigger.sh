@@ -3,7 +3,7 @@ set -eux
 
 function trigger_on_update {
     cmd=$*
-    gitupdatemsg=$(git remote update)
+    gitupdatemsg=$(git remote update 2>&1)
     # gitupdatemsg=$(cat msg.txt)
     branchlist=$(echo "$gitupdatemsg" | grep "\->" | awk '{print $2}')
     for branch in $branchlist; do
