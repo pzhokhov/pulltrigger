@@ -34,6 +34,7 @@ function filter_commits {
     fi 
 }
 
+git fetch origin
 while true; 
 do
     trigger_on_update filter_commits $1
