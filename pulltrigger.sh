@@ -2,30 +2,35 @@
 set -eux
 
 function trigger_on_update {
-    sep="(\ {2,}|\ *->\ *)"
+    sep="[][(\ {2,}|\ *->\ *)]"
     cmd=$*
+    # gitupdatemsg=$(cat msg.txt | grep "\->")
     gitupdatemsg=$(git remote -v update 2>&1 | grep "\->")
 
-    # gitupdatemsg=$(cat msg.txt | grep "\->")
-    branchlist=$(echo "$gitupdatemsg" | awk -F "$sep" '{print $2}')
+    while read -r branchmsg;  do
+        uptodateregex="= \[up to date\].*"
+        newbranchregex="* \[new branch\].*"
+        if [[ $branchmsg =~ $uptodateregex ]]; then
+            continue
+        fi
 
-    for branch in $branchlist; do
-        commitrange=$(echo "$gitupdatemsg" | grep $branch | awk -F "$sep" '{print $1}')
+        if [[ $branchmsg =~ $newbranchregex ]]; then
+            branch=$(echo $branchmsg | awk '{print $5}')
+            commitrange='origin..HEAD'
+        else
+            branch=$(echo $branchmsg | awk '{print $2}')
+            commitrange=$(echo $branchmsg | awk '{print $1}')
+              
+        fi
         
-        if [[ $commitrange == ' = [up to date]' ]]; then
-            continue
-        fi
-        if [[ $commitrange == ' * [new branch]' ]]; then
-            continue
-        fi
-    
         commitlist=$(git rev-list --ancestry-path $commitrange)
         for commithash in $commitlist; do
             commitmsg=$(git log --format=%B -n 1 $commithash)
             commitmsg64=$(echo "$commitmsg" | base64)
             $cmd $branch $commithash $commitmsg64
-        done
-    done
+            exit $?
+        done        
+    done <<< "$gitupdatemsg"
 }
 
 function filter_commits {
@@ -33,18 +38,19 @@ function filter_commits {
     commithash=${*: -2:1}
     commitmsg64=${*: -1}
     commimsg=$(echo "$commitmsg64" | base64 --decode)
-
+    
+    filterregex=".*RUN BENCHMARKS\Z"
     if [[ $branch == master ]]; then
         $*
         return $?
     fi  
-    if [[ $commitmsg =~ ".*RUN BENCHMARKS\Z" ]]; then
+    if [[ $commitmsg =~ $filterregex ]]; then
         $*
         return $?
     fi 
 }
 
-git fetch origin
+# git fetch origin
 while true; 
 do
     trigger_on_update filter_commits $1
