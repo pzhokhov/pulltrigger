@@ -26,7 +26,6 @@ function trigger_on_update {
             commitmsg=$(git log --format=%B -n 1 $commithash)
             commitmsg64=$(echo "$commitmsg" | base64)
             $cmd $branch $commithash $commitmsg64
-            exit $?
         done        
     done <<< "$gitupdatemsg"
 }
