@@ -6,10 +6,9 @@ function trigger_on_update {
     cmd=$*
     # gitupdatemsg=$(cat msg.txt | grep "\->")
     gitupdatemsg=$(git remote -v update 2>&1 | grep "\->")
-
     while read -r branchmsg;  do
-        uptodateregex="= \[up to date\].*"
-        newbranchregex="* \[new branch\].*"
+        uptodateregex='= \[up to date\].*'
+        newbranchregex='\* \[new branch\].*'
         if [[ $branchmsg =~ $uptodateregex ]]; then
             continue
         fi
@@ -19,10 +18,11 @@ function trigger_on_update {
             commitrange='origin..HEAD'
         else
             branch=$(echo $branchmsg | awk '{print $2}')
-            commitrange=$(echo $branchmsg | awk '{print $1}')
-              
+            commitrange=$(echo $branchmsg | awk '{print $1}')             
         fi
         
+        git checkout $branch
+        git pull
         commitlist=$(git rev-list --ancestry-path $commitrange)
         for commithash in $commitlist; do
             commitmsg=$(git log --format=%B -n 1 $commithash)
@@ -39,7 +39,7 @@ function filter_commits {
     commitmsg64=${*: -1}
     commimsg=$(echo "$commitmsg64" | base64 --decode)
     
-    filterregex=".*RUN BENCHMARKS\Z"
+    filterregex=".*RUN BENCHMARKS"
     if [[ $branch == master ]]; then
         $*
         return $?
@@ -50,7 +50,7 @@ function filter_commits {
     fi 
 }
 
-# git fetch origin
+git fetch origin
 while true; 
 do
     trigger_on_update filter_commits $1
