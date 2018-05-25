@@ -2,20 +2,32 @@
 set -eux
 
 function trigger_on_update {
+    sep="[][(\ {2,}|\ *->\ *)]"
     cmd=$*
-    gitupdatemsg=$(git remote update 2>&1)
-    # gitupdatemsg=$(cat msg.txt)
-    branchlist=$(echo "$gitupdatemsg" | grep "\->" | awk '{print $2}')
-    for branch in $branchlist; do
-        commitrange=$(echo "$gitupdatemsg" | grep "\->" | grep $branch | awk '{print $1}')
-        commitlist=$(git rev-list --ancestry-path $commitrange)
+    # gitupdatemsg=$(cat msg.txt | grep "\->")
+    gitupdatemsg=$(git remote -v update 2>&1 | grep "\->")
+    while read -r branchmsg;  do
+        uptodateregex='= \[up to date\].*'
+        newbranchregex='\* \[new branch\].*'
+        if [[ $branchmsg =~ $uptodateregex ]]; then
+            continue
+        fi
 
+        if [[ $branchmsg =~ $newbranchregex ]]; then
+            branch=$(echo $branchmsg | awk '{print $5}')
+            commitlist=$(git rev-list origin/$branch | head -1)
+        else
+            branch=$(echo $branchmsg | awk '{print $2}')
+            commitrange=$(echo $branchmsg | awk '{print $1}')             
+            commitlist=$(git rev-list --ancestry-path $commitrange)
+        fi
+        
         for commithash in $commitlist; do
             commitmsg=$(git log --format=%B -n 1 $commithash)
             commitmsg64=$(echo "$commitmsg" | base64)
             $cmd $branch $commithash $commitmsg64
-        done
-    done
+        done        
+    done <<< "$gitupdatemsg"
 }
 
 function filter_commits {
@@ -23,12 +35,13 @@ function filter_commits {
     commithash=${*: -2:1}
     commitmsg64=${*: -1}
     commimsg=$(echo "$commitmsg64" | base64 --decode)
-
+    
+    filterregex=".*RUN BENCHMARKS"
     if [[ $branch == master ]]; then
         $*
         return $?
     fi  
-    if [[ $commitmsg =~ ".*RUN BENCHMARKS\Z" ]]; then
+    if [[ $commitmsg =~ $filterregex ]]; then
         $*
         return $?
     fi 
