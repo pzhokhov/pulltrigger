@@ -15,15 +15,13 @@ function trigger_on_update {
 
         if [[ $branchmsg =~ $newbranchregex ]]; then
             branch=$(echo $branchmsg | awk '{print $5}')
-            commitrange='origin..HEAD'
+            commitlist=$(git rev-list origin/$branch | head -1)
         else
             branch=$(echo $branchmsg | awk '{print $2}')
             commitrange=$(echo $branchmsg | awk '{print $1}')             
+            commitlist=$(git rev-list --ancestry-path $commitrange)
         fi
         
-        git checkout $branch
-        git pull
-        commitlist=$(git rev-list --ancestry-path $commitrange)
         for commithash in $commitlist; do
             commitmsg=$(git log --format=%B -n 1 $commithash)
             commitmsg64=$(echo "$commitmsg" | base64)
